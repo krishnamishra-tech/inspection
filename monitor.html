@@ -1,1 +1,172 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AI-Based Public Area Monitoring and Inspection System</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
+<style>
+:root{--bg:#f2f4f7;--card:#fff;--line:#cfd6de;--ink:#212529;--mute:#5f6b78;--pri:#0d5eaf;--pri2:#0a4a8a;--hl:#e8f1fb;--ok:#19753c;--warn:#a15c00;--bad:#b42318;--okbg:#e6f4ea;--warnbg:#fff3d6;--badbg:#fde8e6;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#15191e;--card:#1e242b;--line:#38424d;--ink:#e4e8ec;--mute:#9aa6b2;--pri:#4d9bea;--pri2:#3a86d4;--hl:#22324a;--ok:#6fd08c;--warn:#f0b955;--bad:#ff8f86;--okbg:#17321f;--warnbg:#3a2f14;--badbg:#3c1e1b}}
+:root[data-theme="dark"]{--bg:#15191e;--card:#1e242b;--line:#38424d;--ink:#e4e8ec;--mute:#9aa6b2;--pri:#4d9bea;--pri2:#3a86d4;--hl:#22324a;--ok:#6fd08c;--warn:#f0b955;--bad:#ff8f86;--okbg:#17321f;--warnbg:#3a2f14;--badbg:#3c1e1b}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 Roboto,Arial,sans-serif}
+h1{font-size:22px;margin:0 0 4px}h2{font-size:17px;margin:0 0 10px}
+header{background:var(--pri);color:#fff}
+.bar{max-width:1040px;margin:0 auto;padding:10px 16px;display:flex;flex-wrap:wrap;align-items:center;gap:6px 18px}
+.bar b{font-size:17px;margin-right:auto}
+header button,header a{background:none;border:0;color:#fff;font:inherit;cursor:pointer;padding:6px 4px;text-decoration:none;border-bottom:2px solid transparent}
+header .on{border-bottom-color:#fff;font-weight:500}
+main{max-width:1040px;margin:0 auto;padding:20px 16px 50px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:4px;padding:16px 18px;margin-bottom:16px}
+.sub{color:var(--mute);margin:0 0 16px}
+label{display:block;font-weight:500;margin:12px 0 4px}
+input,select,textarea,button{font:inherit;color:inherit}
+input[type=text],input[type=password],input[type=number],input[type=file],select,textarea{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:4px;background:var(--card)}
+.btn{background:var(--pri);color:#fff;border:0;border-radius:4px;padding:9px 18px;font-weight:500;cursor:pointer}
+.btn:hover{background:var(--pri2)}.btn:disabled{opacity:.45;cursor:not-allowed}
+:focus-visible{outline:3px solid #f5a623;outline-offset:2px}
+.pipe{list-style:none;display:flex;flex-wrap:wrap;gap:6px;margin:0 0 16px;padding:0}
+.pipe li{flex:1 1 130px;border:1px solid var(--line);background:var(--card);padding:8px 10px;border-radius:4px;color:var(--mute);font-size:13.5px}
+.pipe li.act{background:var(--hl);border-color:var(--pri);color:var(--ink);font-weight:500}
+.pipe li.done{background:var(--okbg);border-color:var(--ok);color:var(--ink)}
+.pipe li.done::before{content:"✓ ";color:var(--ok);font-weight:700}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{background:var(--hl);text-align:left;padding:8px;border:1px solid var(--line)}
+td{padding:8px;border:1px solid var(--line);vertical-align:top}
+.wrap{overflow-x:auto}
+.tag{display:inline-block;padding:1px 9px;border-radius:10px;font-size:12.5px;font-weight:500}
+.tag.ok{background:var(--okbg);color:var(--ok)}.tag.warn{background:var(--warnbg);color:var(--warn)}.tag.bad{background:var(--badbg);color:var(--bad)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+canvas,.th{max-width:100%;border:1px solid var(--line);border-radius:3px}
+.cnt{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:16px}
+.cnt div{background:var(--card);border:1px solid var(--line);border-radius:4px;padding:10px 14px}
+.cnt b{display:block;font-size:24px}
+.note{font-size:13px;color:var(--mute)}
+.lg{max-width:400px;margin:7vh auto 0;padding:0 16px}
+.lg .card{padding:24px}
+.lg h1{font-size:20px;text-align:center}
+@media (max-width:700px){.two{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+const $=q=>document.querySelector(q);
+const esc=t=>String(t==null?"":t).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const AREAS=[{id:"A1",name:"Railway Station, Platform 2",limit:25},{id:"A2",name:"City Park, Main Gate",limit:15},{id:"A3",name:"Bus Stand, Gate 1",limit:20},{id:"A4",name:"Market Road Crossing",limit:12}];
+let P;try{P=JSON.parse(localStorage.getItem("apm1"))}catch(e){}
+P=P||{user:null,limits:{},alerts:[],theme:"light"};
+document.documentElement.dataset.theme=P.theme||"light";
+const save=()=>{try{localStorage.setItem("apm1",JSON.stringify(P))}catch(e){}};
+const lim=a=>P.limits[a.id]!=null?P.limits[a.id]:a.limit;
+const now=()=>new Date().toLocaleString("en-IN",{dateStyle:"medium",timeStyle:"short"});
+let page="monitor",busy=false;
+const STEPS=["1. Camera / video","2. Pre-processing","3. AI detection","4. Decision","5. Alert / report","6. Action"];
 
+function render(){
+ const r=$("#root");
+ if(!P.user){
+  r.innerHTML=`<div class="lg"><div class="card"><h1>AI-Based Public Area Monitoring and Inspection System</h1><p class="sub" style="text-align:center">Inspector login</p>
+  <form id="lf"><label for="u">Username</label><input id="u" type="text" value="inspector" autocomplete="username"><label for="p">Password</label><input id="p" type="password" value="1234" autocomplete="current-password"><p style="margin:18px 0 0"><button class="btn" style="width:100%">Login</button></p><p class="note" style="margin:10px 0 0">Demo login is already filled in.</p></form></div>
+  </div>`;
+  $("#lf").onsubmit=e=>{e.preventDefault();P.user=$("#u").value||"inspector";save();render()};return}
+ const nav=[["monitor","Monitor"],["alerts","Alerts"],["areas","Areas"],["about","How it works"]];
+ r.innerHTML=`<header><div class="bar"><b>Public Area Monitoring</b>${nav.map(n=>`<button data-p="${n[0]}" class="${page===n[0]?"on":""}">${n[1]}</button>`).join("")}<span>${esc(P.user)}</span><button id="th">${P.theme==="dark"?"Light":"Dark"} mode</button><button id="lo">Logout</button></div></header><main id="m"></main>`;
+ r.querySelectorAll("header [data-p]").forEach(b=>b.onclick=()=>{if(busy)return;page=b.dataset.p;render()});
+ $("#lo").onclick=()=>{P.user=null;save();render()};
+ $("#th").onclick=()=>{P.theme=P.theme==="dark"?"light":"dark";document.documentElement.dataset.theme=P.theme;save();render()};
+ ({monitor,alerts,areas,about}[page])();
+}
+function pipe(n){return `<ol class="pipe">${STEPS.map((s,i)=>`<li class="${i<n?"done":i===n?"act":""}">${s}</li>`).join("")}</ol>`}
+function setPipe(n){$("#pp").innerHTML=pipe(n)}
+
+function monitor(){
+ $("#m").innerHTML=`<h1>Monitor a public area</h1><p class="sub">Upload a camera photo or a short video. The system checks it for crowding, suspicious activity, accidents and unsafe situations.</p>
+ <div id="pp">${pipe(0)}</div>
+ <div class="card"><h2>Step 1: Camera / video input</h2><label for="ar">Camera location</label><select id="ar">${AREAS.map(a=>`<option value="${a.id}">${a.name} (crowd limit ${lim(a)})</option>`).join("")}</select>
+ <label for="fl">Photo or video from the camera</label><input id="fl" type="file" accept="image/*,video/*" capture="environment"><p class="note">For a video, one frame from the middle is analysed.</p>
+ <p><button class="btn" id="go" disabled>Analyse</button></p></div><div id="out"></div>`;
+ $("#fl").onchange=()=>{$("#go").disabled=!$("#fl").files[0]};
+ $("#go").onclick=run;
+}
+async function frameOf(f){
+ if(f.type.startsWith("video")){
+  const v=document.createElement("video");v.muted=true;v.playsInline=true;v.src=URL.createObjectURL(f);
+  await new Promise((ok,no)=>{v.onloadedmetadata=ok;v.onerror=no});
+  v.currentTime=Math.min(v.duration/2,5);await new Promise(ok=>v.onseeked=ok);
+  const c=document.createElement("canvas");c.width=v.videoWidth;c.height=v.videoHeight;c.getContext("2d").drawImage(v,0,0);return c}
+ return createImageBitmap(f);
+}
+function lap(g,w,h){let s=0,s2=0,n=0;for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){const i=y*w+x,v=4*g[i]-g[i-1]-g[i+1]-g[i-w]-g[i+w];s+=v;s2+=v*v;n++}return s2/n-(s/n)**2}
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+async function run(){
+ if(busy)return;busy=true;$("#go").disabled=true;const out=$("#out");out.innerHTML="";
+ const area=AREAS.find(a=>a.id===$("#ar").value),file=$("#fl").files[0];
+ try{
+  setPipe(1);await wait(400);
+  const src=await frameOf(file),k=Math.min(1,640/src.width),w=Math.round(src.width*k),h=Math.round(src.height*k);
+  const c=document.createElement("canvas");c.width=w;c.height=h;const x=c.getContext("2d");x.drawImage(src,0,0,w,h);
+  const id=x.getImageData(0,0,w,h),d=id.data,g=new Float32Array(w*h);let sum=0;
+  const gc=document.createElement("canvas");gc.width=w;gc.height=h;const gx=gc.getContext("2d"),gd=gx.createImageData(w,h);
+  for(let i=0;i<w*h;i++){const v=.299*d[i*4]+.587*d[i*4+1]+.114*d[i*4+2];g[i]=v;sum+=v;gd.data[i*4]=gd.data[i*4+1]=gd.data[i*4+2]=v;gd.data[i*4+3]=255}
+  gx.putImageData(gd,0,0);
+  const bright=Math.round(sum/(w*h)),blur=Math.round(lap(g,w,h));
+  const q=[];if(bright<50)q.push("The frame is very dark.");if(blur<40)q.push("The frame is blurry.");
+  out.innerHTML=`<div class="card"><h2>Step 2: Pre-processing</h2><div class="two"><div><p class="note">Original frame, resized to ${w}×${h}</p><div id="o1"></div></div><div><p class="note">Grayscale copy used for quality checks</p><div id="o2"></div></div></div>
+  <p>Brightness: <b>${bright}</b> of 255 · Sharpness score: <b>${blur}</b></p>${q.length?`<p><span class="tag warn">Quality warning</span> ${q.join(" ")} Results may be less reliable.</p>`:`<p><span class="tag ok">Frame quality is good</span></p>`}</div>`;
+  $("#o1").appendChild(c);$("#o2").appendChild(gc);
+  setPipe(2);
+  const blob=await new Promise(r=>c.toBlob(r,"image/jpeg",.8));
+  let det=null,sim=false;
+  try{const sm=await claude.use("sample"),L=sm?await sm.limits():null;
+   if(sm&&L&&L.images)det=await sm.json(`You are the detection stage of a public-area monitoring system. This frame comes from the camera at "${area.name}". Count the people and vehicles you can see. Then check for these events only: suspicious_activity (fighting, loitering with a bag left behind, forced entry, harassment), accident (collision, person fallen or injured), unsafe_situation (fire, smoke, blocked exit, exposed hazard). Report an event only if it is clearly visible. Reply with ONLY JSON: {"people":integer,"vehicles":integer,"events":[{"type":"suspicious_activity|accident|unsafe_situation","confidence":0-100,"detail":"short phrase"}],"summary":"one sentence"}`,{images:[blob],modelTier:"default"})}catch(e){det=null}
+  if(!det){sim=true;det={people:6+(blob.size%9),vehicles:blob.size%3,events:[],summary:"Simulated result: the vision model is not available in this view."}}
+  const people=+det.people||0,veh=+det.vehicles||0,ev=Array.isArray(det.events)?det.events:[];
+  const NAME={suspicious_activity:"Suspicious activity",accident:"Accident",unsafe_situation:"Unsafe situation"};
+  out.innerHTML+=`<div class="card"><h2>Step 3: AI detection</h2><div class="cnt"><div><b>${people}</b>People</div><div><b>${veh}</b>Vehicles</div><div><b>${ev.length}</b>Events found</div></div><p>${esc(det.summary||"")}</p>${ev.length?`<div class="wrap"><table><tr><th>Event</th><th>Confidence</th><th>Detail</th></tr>${ev.map(e=>`<tr><td>${NAME[e.type]||esc(e.type)}</td><td>${Math.round(e.confidence)}%</td><td>${esc(e.detail)}</td></tr>`).join("")}</table></div>`:`<p class="note">No predefined event was detected in the frame.</p>`}${sim?`<p class="note">This is a simulated result.</p>`:""}</div>`;
+  setPipe(3);await wait(500);
+  const F=[],L2=lim(area);
+  if(people>L2)F.push({type:"Crowding",sev:people>L2*1.5?"High":"Medium",why:`${people} people counted, limit for this area is ${L2}.`});
+  ev.forEach(e=>{if(e.confidence>=60)F.push({type:NAME[e.type]||e.type,sev:(e.type==="accident"||e.confidence>=85)?"High":"Medium",why:`Model confidence ${Math.round(e.confidence)}% is at least 60%. ${esc(e.detail||"")}`})});
+  const sc=s=>s==="High"?"bad":"warn";
+  out.innerHTML+=`<div class="card"><h2>Step 4: Decision</h2><p class="note">Rules: crowding if people &gt; area limit. Any other event if confidence ≥ 60%. High severity for accidents or confidence ≥ 85%.</p>${F.length?`<div class="wrap"><table><tr><th>Finding</th><th>Severity</th><th>Reason</th></tr>${F.map(f=>`<tr><td>${f.type}</td><td><span class="tag ${sc(f.sev)}">${f.sev}</span></td><td>${f.why}</td></tr>`).join("")}</table></div>`:`<p><span class="tag ok">Normal</span> Nothing needs attention.</p>`}</div>`;
+  setPipe(4);await wait(500);
+  if(F.length){
+   const tc=document.createElement("canvas");tc.width=160;tc.height=Math.round(160*h/w);tc.getContext("2d").drawImage(c,0,0,tc.width,tc.height);
+   const al={id:"AL-"+(1001+P.alerts.length),t:now(),area:area.name,F,people,veh,summary:det.summary||"",thumb:tc.toDataURL("image/jpeg",.6),status:"Open",remark:"",by:P.user,sim};
+   P.alerts.unshift(al);save();
+   out.innerHTML+=`<div class="card"><h2>Step 5: Alert and report</h2><p><span class="tag bad">Alert ${al.id} raised</span> The responsible authority can now take action from the Alerts page.</p><p class="note">${al.area} · ${al.t} · reported by ${esc(al.by)}</p></div>`;
+   setPipe(5);
+  }else{out.innerHTML+=`<div class="card"><h2>Step 5: Alert and report</h2><p>No alert was raised for this frame.</p></div>`;setPipe(6)}
+ }catch(e){out.innerHTML=`<div class="card"><span class="tag bad">Error</span> This file could not be read. Try a JPG, PNG or MP4 file.</div>`;setPipe(0)}
+ busy=false;$("#go").disabled=false;
+}
+function alerts(){
+ const n=s=>P.alerts.filter(a=>a.status===s).length;
+ $("#m").innerHTML=`<h1>Alerts and action</h1><p class="sub">Step 6: the responsible person updates the status of each alert.</p>
+ <div class="cnt"><div><b>${P.alerts.length}</b>Total alerts</div><div><b>${n("Open")}</b>Open</div><div><b>${n("Assigned")}</b>Assigned</div><div><b>${n("Resolved")}</b>Resolved</div></div>
+ <div class="card"><div class="wrap"><table><tr><th>Alert</th><th>Area and findings</th><th>Frame</th><th>Status</th><th>Remark</th></tr>${P.alerts.map((a,i)=>`<tr><td>${a.id}<br><span class="note">${a.t}</span></td><td>${a.area}<br>${a.F.map(f=>`<span class="tag ${f.sev==="High"?"bad":"warn"}">${f.type}</span>`).join(" ")}<br><span class="note">${a.people} people, ${a.veh} vehicles${a.sim?" (simulated)":""}</span></td><td><img class="th" src="${a.thumb}" alt="Alert frame" width="110"></td><td><select data-i="${i}" class="st">${["Open","Assigned","Resolved"].map(s=>`<option ${s===a.status?"selected":""}>${s}</option>`).join("")}</select></td><td><input type="text" data-i="${i}" class="rm" value="${esc(a.remark)}" placeholder="Action taken"></td></tr>`).join("")||`<tr><td colspan="5">No alerts yet. Analyse a frame on the Monitor page.</td></tr>`}</table></div></div>`;
+ document.querySelectorAll(".st").forEach(s=>s.onchange=()=>{P.alerts[s.dataset.i].status=s.value;save();alerts()});
+ document.querySelectorAll(".rm").forEach(s=>s.onchange=()=>{P.alerts[s.dataset.i].remark=s.value;save()});
+}
+function areas(){
+ $("#m").innerHTML=`<h1>Monitored areas</h1><p class="sub">Set the maximum number of people allowed in each area. Crowding is flagged above this number.</p><div class="card"><div class="wrap"><table><tr><th>Area</th><th>Crowd limit</th><th>Open alerts</th></tr>${AREAS.map(a=>`<tr><td>${a.name}</td><td style="width:140px"><input type="number" min="1" max="500" data-id="${a.id}" value="${lim(a)}"></td><td>${P.alerts.filter(x=>x.area===a.name&&x.status!=="Resolved").length}</td></tr>`).join("")}</table></div></div>`;
+ document.querySelectorAll("input[type=number]").forEach(i=>i.onchange=()=>{P.limits[i.dataset.id]=Math.max(1,+i.value||1);save()});
+}
+function about(){
+ $("#m").innerHTML=`<h1>How it works</h1><p class="sub">The six stages: Camera → Processing → AI Detection → Decision → Alert → Action.</p>
+ <div class="card"><div class="wrap"><table><tr><th>Stage</th><th>In this website</th><th>In your Python project</th></tr>
+ <tr><td>1. Camera / video</td><td>Upload a photo or video file. One frame is taken from a video.</td><td><code>cv2.VideoCapture(0)</code> or a video file</td></tr>
+ <tr><td>2. Pre-processing</td><td>Resize to 640 px, convert to grayscale, measure brightness and sharpness.</td><td><code>cv2.resize</code>, <code>cv2.cvtColor</code>, <code>cv2.Laplacian</code></td></tr>
+ <tr><td>3. AI detection</td><td>A vision model counts people and vehicles and looks for unsafe events.</td><td>A pretrained YOLO model for people and vehicles</td></tr>
+ <tr><td>4. Decision</td><td>Plain if-else rules with thresholds (crowd limit, 60% confidence).</td><td>The same rules written in Python</td></tr>
+ <tr><td>5. Alert / report</td><td>An alert record with area, time, findings and the frame.</td><td>Save to a database and send an email or Telegram message</td></tr>
+ <tr><td>6. Action</td><td>The Alerts page: Open, Assigned or Resolved, with a remark.</td><td>A Flask page with the same status table</td></tr></table></div></div>
+ <div class="card"><h2>Notes</h2><p>This website runs in the browser, so stage 3 uses a hosted vision model instead of a model you train. Your own project can use Python, OpenCV and a pretrained YOLO model, with the same decision rules. If the vision model is not available, the page shows simulated numbers and says so.</p></div>`;
+}
+render();
+</script>
+</body>
+</html>
